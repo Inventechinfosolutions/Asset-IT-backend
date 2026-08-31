@@ -11,6 +11,7 @@ import {
   PaginationQueryDto,
   type PaginatedResult,
 } from '../common/dto/pagination-query.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateSupportRequestDto } from './dto/create-support-request.dto';
 import {
   RequestStatus,
@@ -23,6 +24,7 @@ export class RequestsService {
   constructor(
     @InjectRepository(SupportRequest)
     private readonly requestsRepository: Repository<SupportRequest>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   private mapRow(row: SupportRequest) {
@@ -48,7 +50,13 @@ export class RequestsService {
       description: dto.description.trim(),
     });
 
-    return this.requestsRepository.save(request);
+    const savedRequest = await this.requestsRepository.save(request);
+    await this.notificationsService.notifyRequestCreated(
+      savedRequest.id,
+      savedRequest.title,
+    );
+
+    return savedRequest;
   }
 
   async findMine(
@@ -179,6 +187,17 @@ export class RequestsService {
     }
 
     request.status = status as RequestStatus;
-    return this.requestsRepository.save(request);
+    const savedRequest = await this.requestsRepository.save(request);
+    await this.notificationsService.clearRequestCreatedNotification(
+      savedRequest.id,
+    );
+    await this.notificationsService.notifyRequestStatusChanged(
+      savedRequest.id,
+      savedRequest.title,
+      savedRequest.status,
+      savedRequest.userId,
+    );
+
+    return savedRequest;
   }
 }
