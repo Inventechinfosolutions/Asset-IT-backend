@@ -54,6 +54,7 @@ export class RequestsService {
     await this.notificationsService.notifyRequestCreated(
       savedRequest.id,
       savedRequest.title,
+      userId,
     );
 
     return savedRequest;
@@ -164,6 +165,7 @@ export class RequestsService {
   async updateStatus(
     id: number,
     status: 'FULFILLED' | 'REJECTED' | 'RESOLVED' | 'CLOSED',
+    senderId: string,
   ) {
     const request = await this.requestsRepository.findOne({ where: { id } });
     if (!request) {
@@ -196,6 +198,7 @@ export class RequestsService {
       savedRequest.title,
       savedRequest.status,
       savedRequest.userId,
+      senderId,
     );
 
     return savedRequest;

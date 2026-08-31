@@ -68,9 +68,10 @@ export class RequestsController {
   @Patch(':id/status')
   @RequirePermissions(Permissions.REQUESTS_APPROVE)
   updateStatus(
+    @CurrentUser() user: AuthUserPayload,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRequestStatusDto,
   ) {
-    return this.requestsService.updateStatus(id, dto.status);
+    return this.requestsService.updateStatus(id, dto.status, user.id);
   }
 }

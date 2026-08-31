@@ -15,8 +15,11 @@ export class Notification {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ type: 'varchar', length: 36, nullable: true })
+  senderId: string | null;
+
   @Column({ type: 'varchar', length: 36 })
-  userId: string;
+  receiverId: string;
 
   @Column({
     type: 'enum',

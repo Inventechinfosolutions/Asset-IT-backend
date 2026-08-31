@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -10,6 +10,7 @@ type NotificationPayload = {
   title: string;
   message: string;
   requestId: number;
+  senderId: string | null;
 };
 
 @Injectable()
@@ -21,15 +22,19 @@ export class NotificationsService {
     private readonly usersRepository: Repository<User>,
   ) {}
 
-  async findMine(userId: string) {
+  async findMine(userId: string, receiverId = userId) {
+    if (receiverId !== userId) {
+      throw new ForbiddenException('You can only view your own notifications');
+    }
+
     const [data, unreadCount] = await Promise.all([
       this.notificationsRepository.find({
-        where: { userId },
+        where: { receiverId },
         order: { createdAt: 'DESC' },
         take: 20,
       }),
       this.notificationsRepository.count({
-        where: { userId, isRead: false },
+        where: { receiverId, isRead: false },
       }),
     ]);
 
@@ -37,13 +42,16 @@ export class NotificationsService {
   }
 
   async markRead(userId: string, id: number) {
-    await this.notificationsRepository.update({ id, userId }, { isRead: true });
+    await this.notificationsRepository.update(
+      { id, receiverId: userId },
+      { isRead: true },
+    );
 
     return this.findMine(userId);
   }
 
   async markAllRead(userId: string) {
-    await this.notificationsRepository.delete({ userId });
+    await this.notificationsRepository.delete({ receiverId: userId });
 
     return this.findMine(userId);
   }
@@ -58,6 +66,7 @@ export class NotificationsService {
   async notifyRequestCreated(
     requestId: number,
     requestTitle: string,
+    senderId: string,
   ): Promise<void> {
     const admins = await this.usersRepository.find({
       where: { role: UserRole.ADMIN, isActive: true },
@@ -70,6 +79,7 @@ export class NotificationsService {
         title: 'New request submitted',
         message: `A new request "${requestTitle}" is waiting for review.`,
         requestId,
+        senderId,
       },
     );
   }
@@ -79,12 +89,14 @@ export class NotificationsService {
     requestTitle: string,
     status: string,
     requesterId: string,
+    senderId: string,
   ): Promise<void> {
     await this.createForUsers([requesterId], {
       type: NotificationType.REQUEST_STATUS_CHANGED,
       title: 'Request status updated',
       message: `Request "${requestTitle}" is now ${status.replaceAll('_', ' ')}.`,
       requestId,
+      senderId,
     });
   }
 
@@ -96,7 +108,7 @@ export class NotificationsService {
 
     const notifications = userIds.map((userId) =>
       this.notificationsRepository.create({
-        userId,
+        receiverId: userId,
         ...payload,
         isRead: false,
       }),

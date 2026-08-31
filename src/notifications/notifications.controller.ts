@@ -4,6 +4,7 @@ import {
   Param,
   ParseIntPipe,
   Patch,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 
@@ -18,8 +19,11 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Get()
-  findMine(@CurrentUser() user: AuthUserPayload) {
-    return this.notificationsService.findMine(user.id);
+  findMine(
+    @CurrentUser() user: AuthUserPayload,
+    @Query('receiverId') receiverId?: string,
+  ) {
+    return this.notificationsService.findMine(user.id, receiverId);
   }
 
   @Patch('read-all')
