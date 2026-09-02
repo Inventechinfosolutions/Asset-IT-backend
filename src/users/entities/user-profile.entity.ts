@@ -32,7 +32,7 @@ export class UserProfile {
   @Column({ type: 'varchar', length: 100, nullable: true })
   lastName: string | null;
 
-  @Column({ type: 'varchar', length: 20, nullable: true })
+  @Column({ type: 'varchar', length: 20, nullable: true, unique: true })
   mobile: string | null;
 
   @Column({ type: 'varchar', length: 100 })
@@ -45,7 +45,7 @@ export class UserProfile {
   })
   employmentType: EmploymentType;
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true, unique: true })
   empNo: string | null;
 
   @CreateDateColumn()

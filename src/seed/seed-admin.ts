@@ -49,6 +49,7 @@ async function seedAdmin() {
         password,
         role: ADMIN.role,
         isActive: true,
+        mustChangePassword: false,
       }),
     );
 

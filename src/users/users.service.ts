@@ -90,6 +90,30 @@ export class UsersService {
     });
   }
 
+  private async assertUniqueMobileAndEmpNo(
+    mobile: string | null,
+    empNo: string | null,
+    excludeUserId?: string,
+  ) {
+    if (mobile) {
+      const existingMobile = await this.profilesRepository.findOne({
+        where: { mobile },
+      });
+      if (existingMobile && existingMobile.userId !== excludeUserId) {
+        throw new ConflictException('Mobile number already registered');
+      }
+    }
+
+    if (empNo) {
+      const existingEmpNo = await this.profilesRepository.findOne({
+        where: { empNo },
+      });
+      if (existingEmpNo && existingEmpNo.userId !== excludeUserId) {
+        throw new ConflictException('Employee number already registered');
+      }
+    }
+  }
+
   async findAll(
     query: ListUsersQueryDto,
   ): Promise<PaginatedResult<PublicUser>> {
@@ -162,12 +186,15 @@ export class UsersService {
       throw new ConflictException('Alias name already registered');
     }
 
+    await this.assertUniqueMobileAndEmpNo(mobile, empNo);
+
     const hashed = await bcrypt.hash(DEFAULT_EMPLOYEE_PASSWORD, 10);
     const user = this.usersRepository.create({
       aliasName,
       password: hashed,
       role: UserRole.USER,
       isActive: dto.isActive,
+      mustChangePassword: true,
     });
     const savedUser = await this.usersRepository.save(user);
 
@@ -219,10 +246,13 @@ export class UsersService {
       }
     }
 
+    await this.assertUniqueMobileAndEmpNo(mobile, empNo, id);
+
     user.aliasName = aliasName;
     user.isActive = dto.isActive;
     if (dto.password?.trim()) {
       user.password = await bcrypt.hash(dto.password.trim(), 10);
+      user.mustChangePassword = false;
     }
     await this.usersRepository.save(user);
 
@@ -259,9 +289,42 @@ export class UsersService {
     }
 
     user.password = await bcrypt.hash(DEFAULT_EMPLOYEE_PASSWORD, 10);
+    user.mustChangePassword = true;
     await this.usersRepository.save(user);
 
     const full = await this.findById(id);
     return this.toPublic(full!);
+  }
+
+  async changePassword(
+    userId: string,
+    oldPassword: string,
+    newPassword: string,
+    confirmNewPassword: string,
+  ): Promise<{ mustChangePassword: boolean }> {
+    if (newPassword !== confirmNewPassword) {
+      throw new BadRequestException('New password and confirm password must match');
+    }
+    if (newPassword === oldPassword) {
+      throw new BadRequestException(
+        'New password must be different from the old password',
+      );
+    }
+
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const valid = await bcrypt.compare(oldPassword, user.password);
+    if (!valid) {
+      throw new BadRequestException('Old password is incorrect');
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.mustChangePassword = false;
+    await this.usersRepository.save(user);
+
+    return { mustChangePassword: false };
   }
 }

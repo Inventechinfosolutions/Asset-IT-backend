@@ -35,6 +35,9 @@ export class User {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  mustChangePassword: boolean;
+
   @OneToOne(() => UserProfile, (profile) => profile.user)
   profile: UserProfile;
 

@@ -118,7 +118,22 @@ export class AuthService {
         name: displayName,
         aliasName: user.aliasName,
         role: user.role,
+        mustChangePassword: Boolean(user.mustChangePassword),
       },
     };
+  }
+
+  async changePassword(
+    userId: string,
+    oldPassword: string,
+    newPassword: string,
+    confirmNewPassword: string,
+  ) {
+    return this.usersService.changePassword(
+      userId,
+      oldPassword,
+      newPassword,
+      confirmNewPassword,
+    );
   }
 }
