@@ -12,6 +12,7 @@ import { RedisModule } from './redis/redis.module';
 import { RequestsModule } from './requests/requests.module';
 import { RolesModule } from './roles/roles.module';
 import { UsersModule } from './users/users.module';
+import { ZonesModule } from './zones/zones.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     DepartmentsModule,
     AssetsModule,
+    ZonesModule,
     AuthModule,
     NotificationsModule,
     RequestsModule,

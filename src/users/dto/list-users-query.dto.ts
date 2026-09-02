@@ -1,7 +1,8 @@
+import { IsBoolean, IsEnum, IsOptional } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsOptional } from 'class-validator';
 
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { EmploymentType } from '../enums/employment-type.enum';
 
 export class ListUsersQueryDto extends PaginationQueryDto {
   @IsOptional()
@@ -12,4 +13,10 @@ export class ListUsersQueryDto extends PaginationQueryDto {
   })
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsEnum(EmploymentType, {
+    message: 'employmentType must be Permanent or Contract',
+  })
+  employmentType?: EmploymentType;
 }

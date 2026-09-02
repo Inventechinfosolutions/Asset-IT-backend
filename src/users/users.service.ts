@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -12,6 +13,7 @@ import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserProfile } from './entities/user-profile.entity';
 import { User, UserRole } from './entities/user.entity';
+import { EmploymentType } from './enums/employment-type.enum';
 import {
   type PaginatedResult,
 } from '../common/dto/pagination-query.dto';
@@ -27,6 +29,7 @@ export type PublicUser = {
   lastName: string | null;
   mobile: string | null;
   department: string;
+  employmentType: EmploymentType;
   empNo: string | null;
   isActive: boolean;
   createdAt: Date;
@@ -65,6 +68,8 @@ export class UsersService {
       lastName,
       mobile: user.profile?.mobile ?? null,
       department: user.profile?.department || 'General',
+      employmentType:
+        user.profile?.employmentType || EmploymentType.PERMANENT,
       empNo: user.profile?.empNo ?? null,
       isActive: user.isActive,
       createdAt: user.createdAt,
@@ -102,6 +107,12 @@ export class UsersService {
       qb.andWhere('user.isActive = :isActive', { isActive: query.isActive });
     }
 
+    if (query.employmentType) {
+      qb.andWhere('profile.employmentType = :employmentType', {
+        employmentType: query.employmentType,
+      });
+    }
+
     if (search) {
       qb.andWhere(
         `(user.aliasName LIKE :search
@@ -135,6 +146,16 @@ export class UsersService {
     const lastName = dto.lastName?.trim() || null;
     const department = dto.department.trim();
     const mobile = dto.mobile?.trim() || null;
+    const empNo =
+      dto.employmentType === EmploymentType.PERMANENT
+        ? dto.empNo?.trim() || null
+        : null;
+
+    if (dto.employmentType === EmploymentType.PERMANENT && !empNo) {
+      throw new BadRequestException(
+        'Employee number is required for permanent staff',
+      );
+    }
 
     const existing = await this.findByAliasName(aliasName);
     if (existing) {
@@ -157,7 +178,8 @@ export class UsersService {
       lastName,
       mobile,
       department,
-      empNo: null,
+      employmentType: dto.employmentType,
+      empNo,
     });
     await this.profilesRepository.save(profile);
 
@@ -179,6 +201,16 @@ export class UsersService {
     const lastName = dto.lastName?.trim() || null;
     const department = dto.department.trim();
     const mobile = dto.mobile?.trim() || null;
+    const empNo =
+      dto.employmentType === EmploymentType.PERMANENT
+        ? dto.empNo?.trim() || null
+        : null;
+
+    if (dto.employmentType === EmploymentType.PERMANENT && !empNo) {
+      throw new BadRequestException(
+        'Employee number is required for permanent staff',
+      );
+    }
 
     if (aliasName !== user.aliasName) {
       const existing = await this.findByAliasName(aliasName);
@@ -199,6 +231,8 @@ export class UsersService {
     user.profile.lastName = lastName;
     user.profile.mobile = mobile;
     user.profile.department = department;
+    user.profile.employmentType = dto.employmentType;
+    user.profile.empNo = empNo;
     await this.profilesRepository.save(user.profile);
 
     const full = await this.findById(id);

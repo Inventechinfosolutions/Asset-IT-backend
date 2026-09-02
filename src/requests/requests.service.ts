@@ -13,7 +13,10 @@ import {
 } from '../common/dto/pagination-query.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AssetsService } from '../assets/assets.service';
+import { ZoneName } from '../zones/enums/zone-name.enum';
+import { ZonesService } from '../zones/zones.service';
 import { CreateSupportRequestDto } from './dto/create-support-request.dto';
+import { ListRequestsQueryDto } from './dto/list-requests-query.dto';
 import {
   RequestStatus,
   RequestType,
@@ -27,11 +30,17 @@ export class RequestsService {
     private readonly requestsRepository: Repository<SupportRequest>,
     private readonly notificationsService: NotificationsService,
     private readonly assetsService: AssetsService,
+    private readonly zonesService: ZonesService,
   ) {}
+
+  private formatRequestCode(id: number): string {
+    return `REQ-${String(id).padStart(2, '0')}`;
+  }
 
   private mapRow(row: SupportRequest) {
     return {
       ...row,
+      requestCode: row.requestCode || this.formatRequestCode(row.id),
       user: row.user
         ? {
             id: row.user.id,
@@ -41,17 +50,35 @@ export class RequestsService {
                   .join(' ')
               : '',
             aliasName: row.user.aliasName,
+            department: row.user.profile?.department || '',
+            empNo: row.user.profile?.empNo || '',
           }
         : null,
     };
   }
 
   async create(userId: string, dto: CreateSupportRequestDto) {
-    let selectedAssets: string[] | null = null;
+    let selectedAssets: Awaited<
+      ReturnType<AssetsService['assertSelectedAssets']>
+    > | null = null;
+    let zone: ZoneName;
+
+    try {
+      const validated = await this.zonesService.assertNames([dto.zone]);
+      zone = validated[0];
+    } catch (err) {
+      throw new BadRequestException(
+        err instanceof Error ? err.message : 'Invalid zone selected',
+      );
+    }
+
+    if (!zone) {
+      throw new BadRequestException('Select a valid zone');
+    }
 
     if (dto.requestType === RequestType.ASSET) {
       try {
-        selectedAssets = await this.assetsService.assertActiveNames(
+        selectedAssets = await this.assetsService.assertSelectedAssets(
           dto.selectedAssets ?? [],
         );
       } catch (err) {
@@ -70,12 +97,16 @@ export class RequestsService {
       requestType: dto.requestType,
       status: RequestStatus.SUBMITTED,
       title: dto.title.trim(),
+      zone,
       location: dto.location.trim(),
-      description: dto.description.trim(),
+      description: (dto.description || '').trim(),
       selectedAssets,
     });
 
     const savedRequest = await this.requestsRepository.save(request);
+    savedRequest.requestCode = this.formatRequestCode(savedRequest.id);
+    await this.requestsRepository.save(savedRequest);
+
     await this.notificationsService.notifyRequestCreated(
       savedRequest.id,
       savedRequest.title,
@@ -96,11 +127,11 @@ export class RequestsService {
     const qb = this.requestsRepository
       .createQueryBuilder('request')
       .where('request.userId = :userId', { userId })
-      .orderBy('request.createdAt', 'ASC');
+      .orderBy('request.createdAt', 'DESC');
 
     if (search) {
       qb.andWhere(
-        '(request.title LIKE :search OR request.location LIKE :search OR request.description LIKE :search OR request.requestType LIKE :search OR request.status LIKE :search)',
+        '(request.title LIKE :search OR request.location LIKE :search OR request.description LIKE :search OR request.requestType LIKE :search OR request.status LIKE :search OR request.requestCode LIKE :search)',
         { search: `%${search}%` },
       );
     }
@@ -111,7 +142,10 @@ export class RequestsService {
       .getManyAndCount();
 
     return {
-      data,
+      data: data.map((row) => ({
+        ...row,
+        requestCode: row.requestCode || this.formatRequestCode(row.id),
+      })),
       total,
       page,
       limit,
@@ -120,7 +154,7 @@ export class RequestsService {
   }
 
   async findAll(
-    query: PaginationQueryDto,
+    query: ListRequestsQueryDto,
   ): Promise<PaginatedResult<ReturnType<RequestsService['mapRow']>>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
@@ -130,7 +164,13 @@ export class RequestsService {
       .createQueryBuilder('request')
       .leftJoinAndSelect('request.user', 'user')
       .leftJoinAndSelect('user.profile', 'profile')
-      .orderBy('request.createdAt', 'ASC');
+      .orderBy('request.createdAt', 'DESC');
+
+    if (query.requestType) {
+      qb.andWhere('request.requestType = :requestType', {
+        requestType: query.requestType,
+      });
+    }
 
     if (search) {
       qb.andWhere(
@@ -139,8 +179,10 @@ export class RequestsService {
           OR request.description LIKE :search
           OR request.requestType LIKE :search
           OR request.status LIKE :search
+          OR request.requestCode LIKE :search
           OR user.aliasName LIKE :search
           OR profile.aliasName LIKE :search
+          OR profile.department LIKE :search
           OR CAST(request.id AS CHAR) LIKE :search)`,
         { search: `%${search}%` },
       );
@@ -190,6 +232,7 @@ export class RequestsService {
   async updateStatus(
     id: number,
     status: 'FULFILLED' | 'REJECTED' | 'RESOLVED' | 'CLOSED',
+    comment: string | undefined,
     senderId: string,
   ) {
     const request = await this.requestsRepository.findOne({ where: { id } });
@@ -213,7 +256,10 @@ export class RequestsService {
       );
     }
 
+    const trimmedComment = (comment || '').trim();
+
     request.status = status as RequestStatus;
+    request.adminComment = trimmedComment || null;
     const savedRequest = await this.requestsRepository.save(request);
     await this.notificationsService.clearRequestCreatedNotification(
       savedRequest.id,

@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { RolesModule } from '../roles/roles.module';
 import { AssetsModule } from '../assets/assets.module';
+import { ZonesModule } from '../zones/zones.module';
 import { SupportRequest } from './entities/support-request.entity';
 import { RequestsController } from './requests.controller';
 import { RequestsService } from './requests.service';
@@ -14,6 +15,7 @@ import { RequestsService } from './requests.service';
     NotificationsModule,
     RolesModule,
     AssetsModule,
+    ZonesModule,
   ],
   controllers: [RequestsController],
   providers: [RequestsService],

@@ -9,6 +9,8 @@ import {
 } from 'typeorm';
 
 import { User } from '../../users/entities/user.entity';
+import { ZoneName } from '../../zones/enums/zone-name.enum';
+import type { SelectedAssetLine } from '../types/selected-asset-line';
 
 export enum RequestType {
   ASSET = 'ASSET',
@@ -30,6 +32,9 @@ export class SupportRequest {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ type: 'varchar', length: 20, unique: true, nullable: true })
+  requestCode: string | null;
+
   @Column({ type: 'varchar', length: 36 })
   userId: string;
 
@@ -50,6 +55,9 @@ export class SupportRequest {
   @Column({ type: 'varchar', length: 200 })
   title: string;
 
+  @Column({ type: 'enum', enum: ZoneName })
+  zone: ZoneName;
+
   @Column({ type: 'varchar', length: 500 })
   location: string;
 
@@ -57,7 +65,10 @@ export class SupportRequest {
   description: string;
 
   @Column({ type: 'json', nullable: true })
-  selectedAssets: string[] | null;
+  selectedAssets: SelectedAssetLine[] | null;
+
+  @Column({ type: 'text', nullable: true })
+  adminComment: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

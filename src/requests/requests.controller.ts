@@ -18,6 +18,7 @@ import { Permissions } from '../roles/permission.constants';
 import { RequirePermissions } from '../roles/permissions.decorator';
 import { PermissionsGuard } from '../roles/permissions.guard';
 import { CreateSupportRequestDto } from './dto/create-support-request.dto';
+import { ListRequestsQueryDto } from './dto/list-requests-query.dto';
 import { UpdateRequestStatusDto } from './dto/update-request-status.dto';
 import { RequestsService } from './requests.service';
 
@@ -55,7 +56,7 @@ export class RequestsController {
 
   @Get()
   @RequirePermissions(Permissions.REQUESTS_VIEW_ALL)
-  findAll(@Query() query: PaginationQueryDto) {
+  findAll(@Query() query: ListRequestsQueryDto) {
     return this.requestsService.findAll(query);
   }
 
@@ -72,6 +73,11 @@ export class RequestsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRequestStatusDto,
   ) {
-    return this.requestsService.updateStatus(id, dto.status, user.id);
+    return this.requestsService.updateStatus(
+      id,
+      dto.status,
+      dto.comment ?? '',
+      user.id,
+    );
   }
 }

@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 
 import { User } from './user.entity';
+import { EmploymentType } from '../enums/employment-type.enum';
 
 @Entity('user_profiles')
 export class UserProfile {
@@ -36,6 +37,13 @@ export class UserProfile {
 
   @Column({ type: 'varchar', length: 100 })
   department: string;
+
+  @Column({
+    type: 'enum',
+    enum: EmploymentType,
+    default: EmploymentType.PERMANENT,
+  })
+  employmentType: EmploymentType;
 
   @Column({ type: 'varchar', length: 50, nullable: true })
   empNo: string | null;

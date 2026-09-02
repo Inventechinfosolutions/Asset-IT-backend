@@ -1,12 +1,16 @@
 import {
   IsBoolean,
+  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
   MaxLength,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
+
+import { EmploymentType } from '../enums/employment-type.enum';
 
 export class UpdateUserDto {
   @IsString()
@@ -33,6 +37,15 @@ export class UpdateUserDto {
   @IsNotEmpty({ message: 'Department is required' })
   @MaxLength(100)
   department: string;
+
+  @IsEnum(EmploymentType, { message: 'Select Permanent or Contract' })
+  employmentType: EmploymentType;
+
+  @ValidateIf((o: UpdateUserDto) => o.employmentType === EmploymentType.PERMANENT)
+  @IsString()
+  @IsNotEmpty({ message: 'Employee number is required for permanent staff' })
+  @MaxLength(50, { message: 'Employee number must be at most 50 characters' })
+  empNo?: string;
 
   @IsOptional()
   @IsString()
