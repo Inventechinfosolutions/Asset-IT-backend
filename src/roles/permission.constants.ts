@@ -8,6 +8,10 @@ export const Permissions = {
   REQUESTS_CREATE: 'requests.create',
   REQUESTS_APPROVE: 'requests.approve',
   DASHBOARD_VIEW: 'dashboard.view',
+  DEPARTMENTS_VIEW: 'departments.view',
+  DEPARTMENTS_CREATE: 'departments.create',
+  DEPARTMENTS_UPDATE: 'departments.update',
+  DEPARTMENTS_ACTIVATE: 'departments.activate',
 } as const;
 
 export type PermissionName = (typeof Permissions)[keyof typeof Permissions];

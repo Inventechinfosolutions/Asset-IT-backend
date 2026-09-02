@@ -4,7 +4,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AssetsModule } from './assets/assets.module';
 import { AuthModule } from './auth/auth.module';
+import { DepartmentsModule } from './departments/departments.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RedisModule } from './redis/redis.module';
 import { RequestsModule } from './requests/requests.module';
@@ -36,6 +38,8 @@ import { UsersModule } from './users/users.module';
 
     RedisModule,
     UsersModule,
+    DepartmentsModule,
+    AssetsModule,
     AuthModule,
     NotificationsModule,
     RequestsModule,

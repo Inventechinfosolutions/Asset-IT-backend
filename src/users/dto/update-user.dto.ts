@@ -6,32 +6,45 @@ import {
   Matches,
   MaxLength,
   MinLength,
-  ValidateIf,
 } from 'class-validator';
 
 export class UpdateUserDto {
   @IsString()
-  @IsNotEmpty({ message: 'Username is required' })
-  @MinLength(3, { message: 'Username must be at least 3 characters' })
+  @IsNotEmpty({ message: 'First name is required' })
+  @MaxLength(100)
+  firstName: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  lastName?: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Alias name is required' })
+  @MinLength(3, { message: 'Alias name must be at least 3 characters' })
   @MaxLength(100)
   @Matches(/^[a-zA-Z0-9._\- ]+$/, {
     message:
-      'Username may only contain letters, numbers, spaces, dots, underscores, and hyphens',
+      'Alias name may only contain letters, numbers, spaces, dots, underscores, and hyphens',
   })
-  username: string;
+  aliasName: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Department is required' })
+  @MaxLength(100)
+  department: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[6-9]\d{9}$/, {
+    message: 'Mobile number must be a valid 10-digit number',
+  })
+  mobile?: string;
 
   @IsOptional()
   @IsString()
   @MinLength(6)
   password?: string;
-
-  @IsBoolean()
-  isPermanent: boolean;
-
-  @ValidateIf((o: UpdateUserDto) => o.isPermanent === true)
-  @IsString()
-  @IsNotEmpty({ message: 'Employee number is required for permanent staff' })
-  empNo?: string;
 
   @IsBoolean()
   isActive: boolean;

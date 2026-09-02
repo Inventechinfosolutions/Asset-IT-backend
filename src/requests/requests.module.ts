@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { NotificationsModule } from '../notifications/notifications.module';
 import { RolesModule } from '../roles/roles.module';
+import { AssetsModule } from '../assets/assets.module';
 import { SupportRequest } from './entities/support-request.entity';
 import { RequestsController } from './requests.controller';
 import { RequestsService } from './requests.service';
@@ -12,6 +13,7 @@ import { RequestsService } from './requests.service';
     TypeOrmModule.forFeature([SupportRequest]),
     NotificationsModule,
     RolesModule,
+    AssetsModule,
   ],
   controllers: [RequestsController],
   providers: [RequestsService],

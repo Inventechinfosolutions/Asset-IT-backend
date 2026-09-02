@@ -14,18 +14,13 @@ export enum UserRole {
   USER = 'USER',
 }
 
-export enum EmploymentType {
-  PERMANENT = 'PERMANENT',
-  CONTRACT = 'CONTRACT',
-}
-
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ type: 'varchar', length: 100, unique: true })
-  username: string;
+  aliasName: string;
 
   @Column({ type: 'varchar', length: 255 })
   password: string;

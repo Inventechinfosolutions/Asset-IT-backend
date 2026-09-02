@@ -56,6 +56,9 @@ export class SupportRequest {
   @Column({ type: 'text' })
   description: string;
 
+  @Column({ type: 'json', nullable: true })
+  selectedAssets: string[] | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

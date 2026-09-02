@@ -8,7 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-import { EmploymentType, User } from './user.entity';
+import { User } from './user.entity';
 
 @Entity('user_profiles')
 export class UserProfile {
@@ -23,14 +23,19 @@ export class UserProfile {
   user: User;
 
   @Column({ type: 'varchar', length: 255 })
-  name: string;
+  aliasName: string;
 
-  @Column({
-    type: 'enum',
-    enum: EmploymentType,
-    nullable: true,
-  })
-  employmentType: EmploymentType | null;
+  @Column({ type: 'varchar', length: 100 })
+  firstName: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  lastName: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  mobile: string | null;
+
+  @Column({ type: 'varchar', length: 100 })
+  department: string;
 
   @Column({ type: 'varchar', length: 50, nullable: true })
   empNo: string | null;

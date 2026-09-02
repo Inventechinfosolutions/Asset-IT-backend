@@ -8,8 +8,8 @@ import { User, UserRole } from '../users/entities/user.entity';
 loadEnv();
 
 const ADMIN = {
-  name: 'SuperAdmin',
-  username: 'superadmin',
+  displayName: 'SuperAdmin',
+  aliasName: 'superadmin',
   password: 'Admin@123',
   role: UserRole.ADMIN,
 };
@@ -33,19 +33,19 @@ async function seedAdmin() {
     const profilesRepo = dataSource.getRepository(UserProfile);
 
     const existing = await usersRepo.findOne({
-      where: { username: ADMIN.username },
+      where: { aliasName: ADMIN.aliasName },
       relations: ['profile'],
     });
 
     if (existing) {
-      console.log(`Admin already exists: ${ADMIN.username}`);
+      console.log(`Admin already exists: ${ADMIN.aliasName}`);
       return;
     }
 
     const password = await bcrypt.hash(ADMIN.password, 10);
     const admin = await usersRepo.save(
       usersRepo.create({
-        username: ADMIN.username,
+        aliasName: ADMIN.aliasName,
         password,
         role: ADMIN.role,
         isActive: true,
@@ -55,14 +55,17 @@ async function seedAdmin() {
     await profilesRepo.save(
       profilesRepo.create({
         userId: admin.id,
-        name: ADMIN.name,
-        employmentType: null,
+        aliasName: ADMIN.aliasName,
+        firstName: ADMIN.displayName,
+        lastName: null,
+        mobile: null,
+        department: 'Administration',
         empNo: null,
       }),
     );
 
     console.log('Admin seeded successfully');
-    console.log(`  Username: ${ADMIN.username}`);
+    console.log(`  Alias name: ${ADMIN.aliasName}`);
     console.log(`  Password: ${ADMIN.password}`);
   } finally {
     await dataSource.destroy();

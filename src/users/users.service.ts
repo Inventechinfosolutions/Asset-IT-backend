@@ -1,32 +1,32 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
-import { Not, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 
 import { CreateUserDto } from './dto/create-user.dto';
+import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserProfile } from './entities/user-profile.entity';
+import { User, UserRole } from './entities/user.entity';
 import {
-  EmploymentType,
-  User,
-  UserRole,
-} from './entities/user.entity';
-import {
-  PaginationQueryDto,
   type PaginatedResult,
 } from '../common/dto/pagination-query.dto';
 
+const DEFAULT_EMPLOYEE_PASSWORD = 'Okay@12345';
+
 export type PublicUser = {
   id: string;
-  username: string;
+  aliasName: string;
   role: UserRole;
   name: string;
-  employmentType: EmploymentType | null;
+  firstName: string;
+  lastName: string | null;
+  mobile: string | null;
+  department: string;
   empNo: string | null;
   isActive: boolean;
   createdAt: Date;
@@ -41,26 +41,39 @@ export class UsersService {
     private readonly profilesRepository: Repository<UserProfile>,
   ) {}
 
-  private normalizeUsername(username: string) {
-    return username.trim().replace(/\s+/g, ' ').toLowerCase();
+  private normalizeAliasName(aliasName: string) {
+    return aliasName.trim().replace(/\s+/g, ' ').toLowerCase();
+  }
+
+  private buildDisplayName(firstName: string, lastName?: string | null) {
+    const trimmedFirst = firstName.trim();
+    const trimmedLast = lastName?.trim();
+    return trimmedLast ? `${trimmedFirst} ${trimmedLast}` : trimmedFirst;
   }
 
   private toPublic(user: User): PublicUser {
+    const firstName =
+      user.profile?.firstName || user.profile?.aliasName || user.aliasName;
+    const lastName = user.profile?.lastName ?? null;
+
     return {
       id: user.id,
-      username: user.username,
+      aliasName: user.aliasName,
       role: user.role,
-      name: user.profile?.name || user.username,
-      employmentType: user.profile?.employmentType ?? null,
+      name: this.buildDisplayName(firstName, lastName),
+      firstName,
+      lastName,
+      mobile: user.profile?.mobile ?? null,
+      department: user.profile?.department || 'General',
       empNo: user.profile?.empNo ?? null,
       isActive: user.isActive,
       createdAt: user.createdAt,
     };
   }
 
-  async findByUsername(username: string): Promise<User | null> {
+  async findByAliasName(aliasName: string): Promise<User | null> {
     return this.usersRepository.findOne({
-      where: { username: this.normalizeUsername(username) },
+      where: { aliasName: this.normalizeAliasName(aliasName) },
       relations: ['profile'],
     });
   }
@@ -73,7 +86,7 @@ export class UsersService {
   }
 
   async findAll(
-    query: PaginationQueryDto,
+    query: ListUsersQueryDto,
   ): Promise<PaginatedResult<PublicUser>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
@@ -85,10 +98,18 @@ export class UsersService {
       .where('user.role = :role', { role: UserRole.USER })
       .orderBy('user.createdAt', 'ASC');
 
+    if (query.isActive !== undefined) {
+      qb.andWhere('user.isActive = :isActive', { isActive: query.isActive });
+    }
+
     if (search) {
       qb.andWhere(
-        `(user.username LIKE :search
-          OR profile.name LIKE :search
+        `(user.aliasName LIKE :search
+          OR profile.aliasName LIKE :search
+          OR profile.firstName LIKE :search
+          OR profile.lastName LIKE :search
+          OR profile.department LIKE :search
+          OR profile.mobile LIKE :search
           OR profile.empNo LIKE :search)`,
         { search: `%${search}%` },
       );
@@ -109,30 +130,20 @@ export class UsersService {
   }
 
   async create(dto: CreateUserDto): Promise<PublicUser> {
-    if (dto.isPermanent && !dto.empNo?.trim()) {
-      throw new BadRequestException(
-        'Employee number is required for permanent staff',
-      );
-    }
+    const aliasName = this.normalizeAliasName(dto.aliasName);
+    const firstName = dto.firstName.trim();
+    const lastName = dto.lastName?.trim() || null;
+    const department = dto.department.trim();
+    const mobile = dto.mobile?.trim() || null;
 
-    const username = this.normalizeUsername(dto.username);
-    const existing = await this.findByUsername(username);
+    const existing = await this.findByAliasName(aliasName);
     if (existing) {
-      throw new ConflictException('Username already registered');
+      throw new ConflictException('Alias name already registered');
     }
 
-    if (dto.isPermanent && dto.empNo) {
-      const empExists = await this.profilesRepository.findOne({
-        where: { empNo: dto.empNo.trim() },
-      });
-      if (empExists) {
-        throw new ConflictException('Employee number already exists');
-      }
-    }
-
-    const hashed = await bcrypt.hash(dto.password, 10);
+    const hashed = await bcrypt.hash(DEFAULT_EMPLOYEE_PASSWORD, 10);
     const user = this.usersRepository.create({
-      username,
+      aliasName,
       password: hashed,
       role: UserRole.USER,
       isActive: dto.isActive,
@@ -141,11 +152,12 @@ export class UsersService {
 
     const profile = this.profilesRepository.create({
       userId: savedUser.id,
-      name: username,
-      employmentType: dto.isPermanent
-        ? EmploymentType.PERMANENT
-        : EmploymentType.CONTRACT,
-      empNo: dto.isPermanent ? dto.empNo!.trim() : null,
+      aliasName,
+      firstName,
+      lastName,
+      mobile,
+      department,
+      empNo: null,
     });
     await this.profilesRepository.save(profile);
 
@@ -162,42 +174,31 @@ export class UsersService {
       throw new NotFoundException('User profile not found');
     }
 
-    if (dto.isPermanent && !dto.empNo?.trim()) {
-      throw new BadRequestException(
-        'Employee number is required for permanent staff',
-      );
-    }
+    const aliasName = this.normalizeAliasName(dto.aliasName);
+    const firstName = dto.firstName.trim();
+    const lastName = dto.lastName?.trim() || null;
+    const department = dto.department.trim();
+    const mobile = dto.mobile?.trim() || null;
 
-    const username = this.normalizeUsername(dto.username);
-    if (username !== user.username) {
-      const existing = await this.findByUsername(username);
+    if (aliasName !== user.aliasName) {
+      const existing = await this.findByAliasName(aliasName);
       if (existing) {
-        throw new ConflictException('Username already registered');
+        throw new ConflictException('Alias name already registered');
       }
     }
 
-    if (dto.isPermanent && dto.empNo) {
-      const empNo = dto.empNo.trim();
-      const empExists = await this.profilesRepository.findOne({
-        where: { empNo, userId: Not(id) },
-      });
-      if (empExists) {
-        throw new ConflictException('Employee number already exists');
-      }
-    }
-
-    user.username = username;
+    user.aliasName = aliasName;
     user.isActive = dto.isActive;
     if (dto.password?.trim()) {
       user.password = await bcrypt.hash(dto.password.trim(), 10);
     }
     await this.usersRepository.save(user);
 
-    user.profile.name = username;
-    user.profile.employmentType = dto.isPermanent
-      ? EmploymentType.PERMANENT
-      : EmploymentType.CONTRACT;
-    user.profile.empNo = dto.isPermanent ? dto.empNo!.trim() : null;
+    user.profile.aliasName = aliasName;
+    user.profile.firstName = firstName;
+    user.profile.lastName = lastName;
+    user.profile.mobile = mobile;
+    user.profile.department = department;
     await this.profilesRepository.save(user.profile);
 
     const full = await this.findById(id);
@@ -211,6 +212,19 @@ export class UsersService {
     }
 
     user.isActive = isActive;
+    await this.usersRepository.save(user);
+
+    const full = await this.findById(id);
+    return this.toPublic(full!);
+  }
+
+  async resetPassword(id: string): Promise<PublicUser> {
+    const user = await this.findById(id);
+    if (!user || user.role !== UserRole.USER) {
+      throw new NotFoundException('User not found');
+    }
+
+    user.password = await bcrypt.hash(DEFAULT_EMPLOYEE_PASSWORD, 10);
     await this.usersRepository.save(user);
 
     const full = await this.findById(id);

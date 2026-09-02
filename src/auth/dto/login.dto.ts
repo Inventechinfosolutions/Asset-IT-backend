@@ -1,22 +1,20 @@
-import { IsString, MaxLength, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString, MinLength } from 'class-validator';
 
 export class LoginDto {
   @IsString()
+  @IsNotEmpty({ message: 'Alias name is required' })
   @MinLength(3)
-  @MaxLength(100)
-  username: string;
+  aliasName: string;
 
   @IsString()
-  @MinLength(6)
+  @IsNotEmpty()
   password: string;
 
   @IsString()
-  @MinLength(1)
-  @MaxLength(64)
+  @IsNotEmpty()
   captchaId: string;
 
   @IsString()
-  @MinLength(4)
-  @MaxLength(8)
+  @IsNotEmpty()
   captchaAnswer: string;
 }

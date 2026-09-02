@@ -7,7 +7,7 @@ import { UsersService } from '../users/users.service';
 
 export type JwtPayload = {
   sub: string;
-  username: string;
+  aliasName: string;
   role: string;
 };
 
@@ -29,11 +29,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user || !user.isActive) {
       throw new UnauthorizedException();
     }
+
+    const firstName =
+      user.profile?.firstName || user.profile?.aliasName || user.aliasName;
+    const lastName = user.profile?.lastName ?? null;
+    const displayName = lastName
+      ? `${firstName} ${lastName}`
+      : firstName;
+
     return {
       id: user.id,
-      username: user.username,
+      aliasName: user.aliasName,
       role: user.role,
-      name: user.profile?.name || user.username,
+      name: displayName,
     };
   }
 }

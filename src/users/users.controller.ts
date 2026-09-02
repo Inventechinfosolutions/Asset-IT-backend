@@ -10,11 +10,11 @@ import {
 } from '@nestjs/common';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
-import { Permissions } from '../roles/permission.constants';
 import { RequirePermissions } from '../roles/permissions.decorator';
 import { PermissionsGuard } from '../roles/permissions.guard';
+import { Permissions } from '../roles/permission.constants';
 import { CreateUserDto } from './dto/create-user.dto';
+import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { UpdateUserActiveDto } from './dto/update-user-active.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
@@ -26,7 +26,7 @@ export class UsersController {
 
   @Get()
   @RequirePermissions(Permissions.USERS_VIEW)
-  findAll(@Query() query: PaginationQueryDto) {
+  findAll(@Query() query: ListUsersQueryDto) {
     return this.usersService.findAll(query);
   }
 
@@ -46,5 +46,11 @@ export class UsersController {
   @RequirePermissions(Permissions.USERS_ACTIVATE)
   setActive(@Param('id') id: string, @Body() dto: UpdateUserActiveDto) {
     return this.usersService.setActive(id, dto.isActive);
+  }
+
+  @Patch(':id/reset-password')
+  @RequirePermissions(Permissions.USERS_UPDATE)
+  resetPassword(@Param('id') id: string) {
+    return this.usersService.resetPassword(id);
   }
 }

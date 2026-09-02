@@ -12,6 +12,7 @@ import {
   type PaginatedResult,
 } from '../common/dto/pagination-query.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AssetsService } from '../assets/assets.service';
 import { CreateSupportRequestDto } from './dto/create-support-request.dto';
 import {
   RequestStatus,
@@ -25,6 +26,7 @@ export class RequestsService {
     @InjectRepository(SupportRequest)
     private readonly requestsRepository: Repository<SupportRequest>,
     private readonly notificationsService: NotificationsService,
+    private readonly assetsService: AssetsService,
   ) {}
 
   private mapRow(row: SupportRequest) {
@@ -33,14 +35,36 @@ export class RequestsService {
       user: row.user
         ? {
             id: row.user.id,
-            name: row.user.profile?.name ?? '',
-            username: row.user.username,
+            name: row.user.profile
+              ? [row.user.profile.firstName, row.user.profile.lastName]
+                  .filter(Boolean)
+                  .join(' ')
+              : '',
+            aliasName: row.user.aliasName,
           }
         : null,
     };
   }
 
   async create(userId: string, dto: CreateSupportRequestDto) {
+    let selectedAssets: string[] | null = null;
+
+    if (dto.requestType === RequestType.ASSET) {
+      try {
+        selectedAssets = await this.assetsService.assertActiveNames(
+          dto.selectedAssets ?? [],
+        );
+      } catch (err) {
+        throw new BadRequestException(
+          err instanceof Error ? err.message : 'Invalid assets selected',
+        );
+      }
+
+      if (!selectedAssets.length) {
+        throw new BadRequestException('Select at least one asset');
+      }
+    }
+
     const request = this.requestsRepository.create({
       userId,
       requestType: dto.requestType,
@@ -48,6 +72,7 @@ export class RequestsService {
       title: dto.title.trim(),
       location: dto.location.trim(),
       description: dto.description.trim(),
+      selectedAssets,
     });
 
     const savedRequest = await this.requestsRepository.save(request);
@@ -114,8 +139,8 @@ export class RequestsService {
           OR request.description LIKE :search
           OR request.requestType LIKE :search
           OR request.status LIKE :search
-          OR user.username LIKE :search
-          OR profile.name LIKE :search
+          OR user.aliasName LIKE :search
+          OR profile.aliasName LIKE :search
           OR CAST(request.id AS CHAR) LIKE :search)`,
         { search: `%${search}%` },
       );

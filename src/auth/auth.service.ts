@@ -38,14 +38,14 @@ export class AuthService {
   async login(dto: LoginDto) {
     await this.verifyCaptcha(dto.captchaId, dto.captchaAnswer);
 
-    const user = await this.usersService.findByUsername(dto.username);
+    const user = await this.usersService.findByAliasName(dto.aliasName);
     if (!user) {
-      throw new UnauthorizedException('Invalid username or password');
+      throw new UnauthorizedException('Invalid alias name or password');
     }
 
     const valid = await bcrypt.compare(dto.password, user.password);
     if (!valid) {
-      throw new UnauthorizedException('Invalid username or password');
+      throw new UnauthorizedException('Invalid alias name or password');
     }
 
     if (!user.isActive) {
@@ -100,16 +100,23 @@ export class AuthService {
   private async buildAuthResponse(user: User) {
     const payload = {
       sub: user.id,
-      username: user.username,
+      aliasName: user.aliasName,
       role: user.role,
     };
+
+    const firstName =
+      user.profile?.firstName || user.profile?.aliasName || user.aliasName;
+    const lastName = user.profile?.lastName ?? null;
+    const displayName = lastName
+      ? `${firstName} ${lastName}`
+      : firstName;
 
     return {
       accessToken: await this.jwtService.signAsync(payload),
       user: {
         id: user.id,
-        name: user.profile?.name || user.username,
-        username: user.username,
+        name: displayName,
+        aliasName: user.aliasName,
         role: user.role,
       },
     };
