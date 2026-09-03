@@ -127,7 +127,8 @@ export class RequestsService {
     const qb = this.requestsRepository
       .createQueryBuilder('request')
       .where('request.userId = :userId', { userId })
-      .orderBy('request.createdAt', 'DESC');
+      .orderBy('request.createdAt', 'DESC')
+      .addOrderBy('request.id', 'DESC');
 
     if (search) {
       qb.andWhere(
@@ -164,7 +165,8 @@ export class RequestsService {
       .createQueryBuilder('request')
       .leftJoinAndSelect('request.user', 'user')
       .leftJoinAndSelect('user.profile', 'profile')
-      .orderBy('request.createdAt', 'DESC');
+      .orderBy('request.createdAt', 'DESC')
+      .addOrderBy('request.id', 'DESC');
 
     if (query.requestType) {
       qb.andWhere('request.requestType = :requestType', {
