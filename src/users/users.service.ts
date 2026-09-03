@@ -125,7 +125,7 @@ export class UsersService {
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.profile', 'profile')
       .where('user.role = :role', { role: UserRole.USER })
-      .orderBy('user.createdAt', 'ASC');
+      .orderBy('user.createdAt', 'DESC');
 
     if (query.isActive !== undefined) {
       qb.andWhere('user.isActive = :isActive', { isActive: query.isActive });
