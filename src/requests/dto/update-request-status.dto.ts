@@ -1,8 +1,22 @@
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
+export const UPDATEABLE_REQUEST_STATUSES = [
+  'IN_PROGRESS',
+  'PENDING_USER',
+  'PENDING_VENDOR',
+  'ON_HOLD',
+  'FULFILLED',
+  'REJECTED',
+  'RESOLVED',
+  'CLOSED',
+] as const;
+
+export type UpdateableRequestStatus =
+  (typeof UPDATEABLE_REQUEST_STATUSES)[number];
+
 export class UpdateRequestStatusDto {
-  @IsIn(['FULFILLED', 'REJECTED', 'RESOLVED', 'CLOSED'])
-  status: 'FULFILLED' | 'REJECTED' | 'RESOLVED' | 'CLOSED';
+  @IsIn(UPDATEABLE_REQUEST_STATUSES)
+  status: UpdateableRequestStatus;
 
   @IsOptional()
   @IsString()

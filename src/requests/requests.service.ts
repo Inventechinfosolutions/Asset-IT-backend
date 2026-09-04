@@ -17,6 +17,7 @@ import { ZoneName } from '../zones/enums/zone-name.enum';
 import { ZonesService } from '../zones/zones.service';
 import { CreateSupportRequestDto } from './dto/create-support-request.dto';
 import { ListRequestsQueryDto } from './dto/list-requests-query.dto';
+import type { UpdateableRequestStatus } from './dto/update-request-status.dto';
 import {
   RequestStatus,
   RequestType,
@@ -127,8 +128,7 @@ export class RequestsService {
     const qb = this.requestsRepository
       .createQueryBuilder('request')
       .where('request.userId = :userId', { userId })
-      .orderBy('request.createdAt', 'DESC')
-      .addOrderBy('request.id', 'DESC');
+      .orderBy('request.id', 'DESC');
 
     if (search) {
       qb.andWhere(
@@ -165,8 +165,7 @@ export class RequestsService {
       .createQueryBuilder('request')
       .leftJoinAndSelect('request.user', 'user')
       .leftJoinAndSelect('user.profile', 'profile')
-      .orderBy('request.createdAt', 'DESC')
-      .addOrderBy('request.id', 'DESC');
+      .orderBy('request.id', 'DESC');
 
     if (query.requestType) {
       qb.andWhere('request.requestType = :requestType', {
@@ -233,7 +232,7 @@ export class RequestsService {
 
   async updateStatus(
     id: number,
-    status: 'FULFILLED' | 'REJECTED' | 'RESOLVED' | 'CLOSED',
+    status: UpdateableRequestStatus,
     comment: string | undefined,
     senderId: string,
   ) {
@@ -242,20 +241,51 @@ export class RequestsService {
       throw new NotFoundException('Request not found');
     }
 
-    if (request.status !== RequestStatus.SUBMITTED) {
+    const openStatuses: RequestStatus[] = [
+      RequestStatus.SUBMITTED,
+      RequestStatus.IN_PROGRESS,
+      RequestStatus.PENDING_USER,
+      RequestStatus.PENDING_VENDOR,
+      RequestStatus.ON_HOLD,
+    ];
+
+    if (!openStatuses.includes(request.status)) {
       throw new BadRequestException('Request status has already been updated');
     }
 
+    const workflowStatuses = [
+      'IN_PROGRESS',
+      'PENDING_USER',
+      'PENDING_VENDOR',
+      'ON_HOLD',
+    ] as const;
+
+    const isWorkflowStatus = (
+      workflowStatuses as readonly string[]
+    ).includes(status);
+
     if (request.requestType === RequestType.ASSET) {
-      if (status !== 'FULFILLED' && status !== 'REJECTED') {
+      if (
+        !isWorkflowStatus &&
+        status !== 'FULFILLED' &&
+        status !== 'REJECTED'
+      ) {
         throw new BadRequestException(
-          'Asset requests can only be Fulfilled or Rejected',
+          'Asset requests can only be Fulfilled, Rejected, or set to a workflow status',
         );
       }
-    } else if (status !== 'RESOLVED' && status !== 'CLOSED') {
+    } else if (
+      !isWorkflowStatus &&
+      status !== 'RESOLVED' &&
+      status !== 'CLOSED'
+    ) {
       throw new BadRequestException(
-        'IT support tickets can only be Resolved or Closed',
+        'IT support tickets can only be Resolved, Closed, or set to a workflow status',
       );
+    }
+
+    if (status === request.status) {
+      throw new BadRequestException('Select a different status');
     }
 
     const trimmedComment = (comment || '').trim();

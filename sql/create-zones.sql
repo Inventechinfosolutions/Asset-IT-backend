@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS zones (
     'South',
     'East',
     'West',
-    'Central'
+    'Head Office'
   ) NOT NULL,
   createdAt DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   updatedAt DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),

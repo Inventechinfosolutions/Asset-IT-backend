@@ -7,6 +7,6 @@ VALUES
   ('South'),
   ('East'),
   ('West'),
-  ('Central')
+  ('Head Office')
 ON DUPLICATE KEY UPDATE
   name = VALUES(name);

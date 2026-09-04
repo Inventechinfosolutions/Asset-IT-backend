@@ -3,5 +3,5 @@ export enum ZoneName {
   SOUTH = 'South',
   EAST = 'East',
   WEST = 'West',
-  CENTRAL = 'Central',
+  HEAD_OFFICE = 'Head Office',
 }
